@@ -16,6 +16,7 @@ from app import schemas
 from app.chain.download import DownloadChain
 from app.chain.media import MediaChain
 from app.chain.subscribe import SubscribeChain
+from app.db.subscribe_oper import SubscribeOper
 from app.core.config import settings
 from app.log import logger
 from app.plugins import _PluginBase
@@ -100,9 +101,13 @@ def create_tv_no_exist_info(
     tmdbid=0,
     vote_average=0.0,
     poster_path=default_poster_path,
-    season_episode_no_exist_info: Optional[Dict[str, EpisodeNoExistInfo]] = None,
+    season_episode_no_exist_info: Optional[
+        Dict[str, EpisodeNoExistInfo]
+    ] = None,
 ) -> TvNoExistInfo:
-    logger.debug(f"season_episode_no_exist_info: {season_episode_no_exist_info}")
+    logger.debug(
+        f"season_episode_no_exist_info: {season_episode_no_exist_info}"
+    )
     return TvNoExistInfo(
         title=title,
         year=year,
@@ -139,7 +144,7 @@ class EpisodeNoExist(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/boeto/MoviePilot-Plugins/main/icons/EpisodeNoExist.png"
     # 插件版本
-    plugin_version = "2.0.4"
+    plugin_version = "2.0.5"
     # 插件作者
     plugin_author = "boeto"
     # 作者主页
@@ -156,6 +161,7 @@ class EpisodeNoExist(_PluginBase):
 
     # 私有属性
     _subChain: SubscribeChain
+    _subOper: SubscribeOper
     _mediachain = MediaChain
     _tmdbChain: TmdbChain
     _dlChain: DownloadChain
@@ -182,6 +188,7 @@ class EpisodeNoExist(_PluginBase):
 
     def init_plugin(self, config: dict[str, Any] | None = None):
         self._subChain = SubscribeChain()
+        self._subOper = SubscribeOper()
         self._mediaChain = MediaChain()
         self._tmdbChain = TmdbChain()
 
@@ -192,7 +199,9 @@ class EpisodeNoExist(_PluginBase):
             self._enabled = config.get("enabled", False)
             self._onlyonce = config.get("onlyonce", False)
             self._cron = (
-                config.get("cron", "").strip() if config.get("cron", "").strip() else ""
+                config.get("cron", "").strip()
+                if config.get("cron", "").strip()
+                else ""
             )
 
             self._clear = config.get("clear", False)
@@ -218,9 +227,15 @@ class EpisodeNoExist(_PluginBase):
             else:
                 self._whitelist_librarys = []
 
-            _whitelist_media_servers = config.get("whitelist_media_servers", "")
-            if _whitelist_media_servers and isinstance(_whitelist_media_servers, str):
-                self._whitelist_media_servers = _whitelist_media_servers.split(",")
+            _whitelist_media_servers = config.get(
+                "whitelist_media_servers", ""
+            )
+            if _whitelist_media_servers and isinstance(
+                _whitelist_media_servers, str
+            ):
+                self._whitelist_media_servers = _whitelist_media_servers.split(
+                    ","
+                )
             else:
                 self._whitelist_media_servers = []
 
@@ -235,7 +250,9 @@ class EpisodeNoExist(_PluginBase):
                 self._scheduler.add_job(
                     func=self.__refresh,
                     trigger="date",
-                    run_date=datetime.datetime.now(tz=pytz.timezone(settings.TZ))
+                    run_date=datetime.datetime.now(
+                        tz=pytz.timezone(settings.TZ)
+                    )
                     + datetime.timedelta(seconds=3),
                 )
 
@@ -343,7 +360,7 @@ class EpisodeNoExist(_PluginBase):
 
         return mediaservers
 
-    def __get_mediaserver_tv_info(self):
+    def __get_mediaserver_tv_info(self) -> None:
         """
         获取媒体库电视剧数据
         """
@@ -373,7 +390,9 @@ class EpisodeNoExist(_PluginBase):
 
             history["details"][item_unique_flag] = {
                 "exist_status": exist_status.value,
-                "tv_no_exist_info": (tv_no_exist_info if tv_no_exist_info else None),
+                "tv_no_exist_info": (
+                    tv_no_exist_info if tv_no_exist_info else None
+                ),
                 "last_update": current_time.strftime("%m-%d %H:%M"),
                 "last_update_full": current_time.strftime("%Y-%m-%d %H:%M:%S"),
             }
@@ -405,7 +424,9 @@ class EpisodeNoExist(_PluginBase):
                 self._whitelist_media_servers
                 and mediaserver not in self._whitelist_media_servers
             ):
-                logger.info(f"【{mediaserver}】不在媒体服务器名称白名单内, 跳过")
+                logger.info(
+                    f"【{mediaserver}】不在媒体服务器名称白名单内, 跳过"
+                )
                 continue
             logger.info(f"开始获取媒体库 {mediaserver} 的数据 ...")
 
@@ -415,7 +436,9 @@ class EpisodeNoExist(_PluginBase):
                 logger.debug(f"媒体库名：{library.name}")
                 if library.name not in self._whitelist_librarys:
                     continue
-                logger.info(f"正在获取 {mediaserver} 媒体库 {library.name} ...")
+                logger.info(
+                    f"正在获取 {mediaserver} 媒体库 {library.name} ..."
+                )
                 logger.debug(f"library.id: {library.id}")
 
                 if not library.id:
@@ -441,12 +464,12 @@ class EpisodeNoExist(_PluginBase):
                         continue
 
                     item_title = (
-                        item.title or item.original_title or f"ItemID: {item.item_id}"
+                        item.title
+                        or item.original_title
+                        or f"ItemID: {item.item_id}"
                     )
 
-                    item_unique_flag = (
-                        f"{mediaserver}_{item.library}_{item.item_id}_{item_title}"
-                    )
+                    item_unique_flag = f"{mediaserver}_{item.library}_{item.item_id}_{item_title}"
 
                     if item_unique_flag in item_unique_flags:
                         logger.info(f"【{item_title}】已处理过, 跳过")
@@ -463,18 +486,23 @@ class EpisodeNoExist(_PluginBase):
                         else MediaType.MOVIE.value
                     )
                     if item_type == MediaType.MOVIE.value:
-                        logger.warn(f"【{item_title}】为{MediaType.MOVIE.value}, 跳过")
+                        logger.warn(
+                            f"【{item_title}】为{MediaType.MOVIE.value}, 跳过"
+                        )
                         continue
                     if item_type == MediaType.TV.value and item.tmdbid:
                         # 查询剧集信息
                         espisodes_info = (
-                            self._msChain.episodes(mediaserver, item.item_id) or []
+                            self._msChain.episodes(mediaserver, item.item_id)
+                            or []
                         )
                         logger.debug(
                             f"获取到媒体库【{item_title}】季集信息:{espisodes_info}"
                         )
                         for episode_info in espisodes_info:
-                            seasoninfo[episode_info.season] = episode_info.episodes
+                            seasoninfo[episode_info.season] = (
+                                episode_info.episodes
+                            )
 
                     # 插入数据
                     item_dict = item.dict()
@@ -488,8 +516,12 @@ class EpisodeNoExist(_PluginBase):
                     )
 
                     if is_add_subscribe_success and tv_no_exist_info:
-                        if not tv_no_exist_info["season_episode_no_exist_info"]:
-                            logger.info(f"【{item_title}】所有季集均已存在/订阅")
+                        if not tv_no_exist_info[
+                            "season_episode_no_exist_info"
+                        ]:
+                            logger.info(
+                                f"【{item_title}】所有季集均已存在/订阅"
+                            )
                             __append_history(
                                 item_unique_flag=item_unique_flag,
                                 exist_status=HistoryStatus.ALL_EXIST,
@@ -551,7 +583,9 @@ class EpisodeNoExist(_PluginBase):
                             tv_no_exist_info=tv_no_exist_info,
                         )
 
-                logger.info(f"{mediaserver} 媒体库 {library.name} 获取数据完成")
+                logger.info(
+                    f"{mediaserver} 媒体库 {library.name} 获取数据完成"
+                )
 
         logger.info(
             f"媒体库缺失集数据获取完成, 已处理媒体数量: {len(item_unique_flags)}"
@@ -567,14 +601,14 @@ class EpisodeNoExist(_PluginBase):
         title = item_dict.get("title") or item_dict.get("original_title")
 
         tv_no_exist_info = create_tv_no_exist_info(
-            title=title,
-            year=item_dict.get("year"),
-            path=item_dict.get(
-                "path",
-            ),
+            title=title or "",
+            year=item_dict.get("year", ""),
+            path=item_dict.get("path", ""),
         )
 
-        logger.debug(f" tv_no_exist_info create_tv_no_exist_info: {tv_no_exist_info}")
+        logger.debug(
+            f" tv_no_exist_info create_tv_no_exist_info: {tv_no_exist_info}"
+        )
 
         tmdbid: int | None = item_dict.get("tmdbid")
         if not tmdbid:
@@ -600,25 +634,33 @@ class EpisodeNoExist(_PluginBase):
             episode_no_exist: List[int],
             episode_total: int,
         ):
-            logger.debug(f"添加【{title}】第【{season}】季缺失集：{episode_no_exist}")
+            logger.debug(
+                f"添加【{title}】第【{season}】季缺失集：{episode_no_exist}"
+            )
             __season_info: EpisodeNoExistInfo = {
                 "season": season,
                 "episode_no_exist": episode_no_exist,
                 "episode_total": episode_total,
             }
 
-            logger.debug(f"【{title}】第【{season}】季缺失集信息：{__season_info}")
+            logger.debug(
+                f"【{title}】第【{season}】季缺失集信息：{__season_info}"
+            )
 
             tv_no_exist_info["season_episode_no_exist_info"][
                 str(season)
             ] = __season_info
 
-            logger.debug(f"【{title}】缺失季集数的电视剧信息：{tv_no_exist_info}")
+            logger.debug(
+                f"【{title}】缺失季集数的电视剧信息：{tv_no_exist_info}"
+            )
 
         exist_season_info = item_dict.get("seasoninfo") or {}
 
         logger.debug(f"【{title}】在媒体库已有季集信息：{exist_season_info}")
-        logger.debug(f"【{title}】开始获取媒体信息 mtype：{mtype}, tmdbid：{tmdbid}")
+        logger.debug(
+            f"【{title}】开始获取媒体信息 mtype：{mtype}, tmdbid：{tmdbid}"
+        )
 
         # 获取媒体信息
         tmdbinfo = self._mediaChain.recognize_media(
@@ -633,16 +675,20 @@ class EpisodeNoExist(_PluginBase):
             )
 
             tv_no_exist_info["vote_average"] = (
-                tmdbinfo.vote_average or tv_no_exist_info.get("vote_average", 0.0)
+                tmdbinfo.vote_average
+                or tv_no_exist_info.get("vote_average", 0.0)
             )
 
             tv_no_exist_info["last_air_date"] = (
-                tmdbinfo.last_air_date or tv_no_exist_info.get("last_air_date", "未知")
+                tmdbinfo.last_air_date
+                or tv_no_exist_info.get("last_air_date", "未知")
             )
 
             tmdbinfo_seasons = tmdbinfo.seasons.items()
             if not tmdbinfo_seasons:
-                logger.debug(f"【{title}】未获取到TMDB季集信息, 跳过获取缺失集数")
+                logger.debug(
+                    f"【{title}】未获取到TMDB季集信息, 跳过获取缺失集数"
+                )
                 return False, tv_no_exist_info
 
             if not exist_season_info and not self._only_season_exist:
@@ -659,8 +705,10 @@ class EpisodeNoExist(_PluginBase):
                     episode_total = len(filted_episodes)
 
                     # 判断用户是否已经添加订阅
-                    if self._subChain.subscribeoper.exists(tmdbid, season=season):
-                        logger.info(f"【{title}】第【{season}】季已存在订阅, 跳过")
+                    if self._subOper.exists(tmdbid, None, season=season):
+                        logger.info(
+                            f"【{title}】第【{season}】季已存在订阅, 跳过"
+                        )
                         continue
                     __append_season_info(
                         season=season,
@@ -689,20 +737,26 @@ class EpisodeNoExist(_PluginBase):
                         f"【{title}】第【{season}】季在媒体库已存在的集数信息: {exist_episode}"
                     )
                     if exist_episode:
-                        logger.debug(f"查找【{title}】第【{season}】季缺失集集数")
+                        logger.debug(
+                            f"查找【{title}】第【{season}】季缺失集集数"
+                        )
                         # 按TMDB集数查找缺失集
                         lack_episode = list(
                             set(filted_episodes).difference(set(exist_episode))
                         )
 
                         if not lack_episode:
-                            logger.debug(f"【{title}】第【{season}】季全部集存在")
+                            logger.debug(
+                                f"【{title}】第【{season}】季全部集存在"
+                            )
                             # 该季全部集存在, 不添加季集信息
                             continue
 
                         # 判断用户是否已经添加订阅
-                        if self._subChain.subscribeoper.exists(tmdbid, season=season):
-                            logger.info(f"【{title}】第【{season}】季已存在订阅, 跳过")
+                        if self._subOper.exists(tmdbid, None, season=season):
+                            logger.info(
+                                f"【{title}】第【{season}】季已存在订阅, 跳过"
+                            )
                             continue
                         # 添加不存在的季集信息
                         __append_season_info(
@@ -713,8 +767,10 @@ class EpisodeNoExist(_PluginBase):
                     else:
                         logger.debug(f"【{title}】第【{season}】季全集不存在")
                         # 判断用户是否已经添加订阅
-                        if self._subChain.subscribeoper.exists(tmdbid, season=season):
-                            logger.info(f"【{title}】第【{season}】季已存在订阅, 跳过")
+                        if self._subOper.exists(tmdbid, None, season=season):
+                            logger.info(
+                                f"【{title}】第【{season}】季已存在订阅, 跳过"
+                            )
                             continue
                         # 该季全集不存在, 选项仅检查已有季缺失未开启时添加全部集
                         if not self._only_season_exist:
@@ -741,7 +797,9 @@ class EpisodeNoExist(_PluginBase):
 
     def __filter_episodes(self, tmdbid, season):
         # 电视剧某季所有集
-        episodes_info = self._tmdbChain.tmdb_episodes(tmdbid=tmdbid, season=season)
+        episodes_info = self._tmdbChain.tmdb_episodes(
+            tmdbid=tmdbid, season=season
+        )
 
         episodes = []
         # 遍历集，筛选当前日期发布的剧集
@@ -749,8 +807,12 @@ class EpisodeNoExist(_PluginBase):
         for episode in episodes_info:
             if episode and episode.air_date:
                 # 将 air_date 字符串转换为 datetime 对象
-                air_date = datetime.datetime.strptime(episode.air_date, "%Y-%m-%d")
-                __episode_name = f"【TMDBID: {tmdbid}】第 {season}季 {episode.name}"
+                air_date = datetime.datetime.strptime(
+                    episode.air_date, "%Y-%m-%d"
+                )
+                __episode_name = (
+                    f"【TMDBID: {tmdbid}】第 {season}季 {episode.name}"
+                )
                 # 比较两个日期
                 if air_date.date() < current_time.date():
                     episodes.append(episode.episode_number)
@@ -775,7 +837,9 @@ class EpisodeNoExist(_PluginBase):
             "only_season_exist": self._only_season_exist,
             "history_type": self._history_type,
             "no_exist_action": self._no_exist_action,
-            "save_path_replaces": "\n".join(map(str, self._save_path_replaces)),
+            "save_path_replaces": "\n".join(
+                map(str, self._save_path_replaces)
+            ),
             "whitelist_librarys": ",".join(map(str, self._whitelist_librarys)),
             "whitelist_media_servers": ",".join(
                 map(str, self._whitelist_media_servers)
@@ -848,7 +912,7 @@ class EpisodeNoExist(_PluginBase):
                     break
 
         # 判断用户是否已经添加订阅
-        if self._subChain.subscribeoper.exists(tmdbid, season=season):
+        if self._subOper.exists(tmdbid, None, season=season):
             logger.info(f"{title_season} 订阅已存在")
             return True
 
@@ -880,7 +944,9 @@ class EpisodeNoExist(_PluginBase):
         return True
 
     @staticmethod
-    def __update_exist_status_by_unique(historys, unique: str, new_status: str):
+    def __update_exist_status_by_unique(
+        historys, unique: str, new_status: str
+    ):
         if unique in historys["details"]:
             historys["details"][unique]["exist_status"] = new_status
             logger.info(f"更新检查记录 {unique} 状态为: {new_status}")
@@ -897,9 +963,16 @@ class EpisodeNoExist(_PluginBase):
         year = tv_no_exist_info["year"]
         tmdbid = tv_no_exist_info["tmdbid"]
         save_path = tv_no_exist_info["path"]
-        season_episode_no_exist_info = tv_no_exist_info["season_episode_no_exist_info"]
+        season_episode_no_exist_info = tv_no_exist_info[
+            "season_episode_no_exist_info"
+        ]
 
-        if not title or not year or not tmdbid or not season_episode_no_exist_info:
+        if (
+            not title
+            or not year
+            or not tmdbid
+            or not season_episode_no_exist_info
+        ):
             logger.warn(f"unique: {unique} 季集信息不完整, 跳过订阅")
             return False
 
@@ -956,8 +1029,10 @@ class EpisodeNoExist(_PluginBase):
 
         if unique in historys["details"]:
             tv_no_exist_info = historys["details"][unique]["tv_no_exist_info"]
-            is_add_subscribe_success = self.__add_subscribe_by_tv_no_exist_info(
-                tv_no_exist_info, unique
+            is_add_subscribe_success = (
+                self.__add_subscribe_by_tv_no_exist_info(
+                    tv_no_exist_info, unique
+                )
             )
             if is_add_subscribe_success:
                 is_update_exist_status_success, historys = (
@@ -989,7 +1064,9 @@ class EpisodeNoExist(_PluginBase):
             logger.warn("未找到检查记录")
             return schemas.Response(success=False, message="未找到检查记录")
 
-        is_success, historys = EpisodeNoExist.__remove_history_by_unique(historys, key)
+        is_success, historys = EpisodeNoExist.__remove_history_by_unique(
+            historys, key
+        )
 
         if is_success:
             logger.info(f"删除检查记录 {key} 成功")
@@ -1360,10 +1437,11 @@ class EpisodeNoExist(_PluginBase):
             seasons_count = len(seasons_episodes_info.keys())
             episodes_count = 0
             for season in seasons_episodes_info.values():
-                if season["episode_no_exist"]:
-                    episodes_count += len(season["episode_no_exist"])
+                episode_no_exist = season.get("episode_no_exist")
+                if episode_no_exist:
+                    episodes_count += len(episode_no_exist)
                 else:
-                    episodes_count += season["episode_total"]
+                    episodes_count += season.get("episode_total", 0)
             return seasons_count, episodes_count
 
         history = history or {}
@@ -1383,14 +1461,16 @@ class EpisodeNoExist(_PluginBase):
             "season_episode_no_exist_info", {}
         )
 
-        season_no_exist_count, episode_no_exist_count = __count_seasons_episodes(
-            season_episode_no_exist_info
+        season_no_exist_count, episode_no_exist_count = (
+            __count_seasons_episodes(season_episode_no_exist_info)
         )
 
         _status = history.get("exist_status") or HistoryStatus.UNKNOW.value
         status = _status
         if status == HistoryStatus.NO_EXIST.value:
-            status = f"缺失{season_no_exist_count}季, {episode_no_exist_count}集"
+            status = (
+                f"缺失{season_no_exist_count}季, {episode_no_exist_count}集"
+            )
 
         mp_domain = settings.MP_DOMAIN()
         link = f"#/media?mediaid=tmdb:{tmdbid}&type={MediaType.TV.value}"
@@ -1656,7 +1736,9 @@ class EpisodeNoExist(_PluginBase):
                                 },
                                 {
                                     "component": "div",
-                                    "props": {"class": "d-flex align-center flex-wrap"},
+                                    "props": {
+                                        "class": "d-flex align-center flex-wrap"
+                                    },
                                     "content": [
                                         {
                                             "component": "span",
@@ -1757,7 +1839,9 @@ class EpisodeNoExist(_PluginBase):
         details = historys.get("details", {})
 
         def sort_history(history_list):
-            history_list.sort(key=lambda x: x["last_update_full"], reverse=True)
+            history_list.sort(
+                key=lambda x: x["last_update_full"], reverse=True
+            )
 
         history_failed: List[ExtendedHistoryDetail] = []
         history_all_exist: List[ExtendedHistoryDetail] = []
@@ -1805,7 +1889,9 @@ class EpisodeNoExist(_PluginBase):
             _tv_no_exist_info = _history.get("tv_no_exist_info")
             if not _tv_no_exist_info:
                 return []
-            _no_exist_info = _tv_no_exist_info.get("season_episode_no_exist_info")
+            _no_exist_info = _tv_no_exist_info.get(
+                "season_episode_no_exist_info"
+            )
             if not _no_exist_info:
                 return []
 
@@ -1816,7 +1902,7 @@ class EpisodeNoExist(_PluginBase):
             history
             for history in history_no_exist
             if any(
-                season_info["episode_no_exist"]
+                season_info.get("episode_no_exist")
                 for season_info in __get_season_episode_no_exist_info(history)
             )
         ]
@@ -1828,7 +1914,9 @@ class EpisodeNoExist(_PluginBase):
                 self._history_type, history_all[:6]
             )
 
-        historys_posts_content = self.__get_historys_posts_content(historys_in_type)
+        historys_posts_content = self.__get_historys_posts_content(
+            historys_in_type
+        )
 
         # 统计数据
         item_unique_flags = historys.get("item_unique_flags", [])

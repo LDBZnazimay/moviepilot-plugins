@@ -3,11 +3,12 @@
     "name": "缺失集数订阅",
     "description": "订阅媒体库缺失集数的电视剧",
     "labels": "订阅",
-    "version": "2.0.4",
+    "version": "2.0.5",
     "icon": "https://raw.githubusercontent.com/boeto/MoviePilot-Plugins/main/icons/EpisodeNoExist.png",
     "author": "boeto",
     "level": 2,
     "history": {
+      "v2.0.5": "fix: 订阅缺失接口",
       "v2.0.4": "fix: 修复详情页跳转链接",
       "v2.0.3": "fix: 视频类型识别",
       "v2.0.2": "fix: 已加订阅列表",
