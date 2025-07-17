@@ -15,5 +15,16 @@
       "v2.0.1": "fix: 检查所有剧集",
       "v2.0.0": "feat: 升级至v2,添加仅检查已有季缺失选项"
     }
-  }
+  },
+  "DoubanRankPlus": {
+    "name": "豆瓣榜单订阅Plus",
+    "description": "豆瓣热门榜单增强版",
+    "labels": "订阅",
+    "version": "2.0.0",
+    "icon": "https://raw.githubusercontent.com/boeto/MoviePilot-Plugins/main/icons/DouBanRankPlus.png",
+    "author": "boeto",
+    "level": 2,
+    "history": {
+      "v2.0.0": "update: 更新接口类型适配"
+    }}
 }

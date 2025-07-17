@@ -26,7 +26,6 @@
     "version": "0.0.20",
     "icon": "https://raw.githubusercontent.com/boeto/MoviePilot-Plugins/main/icons/DouBanRankPlus.png",
     "author": "boeto",
-    "v2": true,
     "level": 2,
     "history": {
       "v0.0.20": "fix: 修复媒体库已存在季度不重复订阅",
